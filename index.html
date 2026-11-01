@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>티처블 머신 모델 테스트</title>
+    <!-- TensorFlow.js 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <!-- 티처블 머신 이미지 모델 라이브러리 (이 부분이 필수입니다) -->
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+    <h1>티처블 머신 모델 테스트</h1>
+    <button type="button" onclick="init()">모델 로드하기</button>
+    
+    <!-- 웹캠 화면과 결과가 표시될 공간 -->
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+    
+    <script type="text/javascript">
+        // 모델 파일들이 html과 같은 폴더에 있으므로 "./"로 설정
+        const URL = "./";
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            try {
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+
+                // 웹캠 설정 (너비 200, 높이 200, 좌우 반전)
+                const flip = true; 
+                webcam = new tmImage.Webcam(200, 200, flip); 
+                await webcam.setup(); // 웹캠 권한 요청
+                await webcam.play();
+                window.requestAnimationFrame(loop);
+
+                // 화면에 웹캠 및 라벨 추가
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                labelContainer = document.getElementById("label-container");
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+            } catch (error) {
+                console.error("모델 로드 또는 웹캠 실행 실패:", error);
+                alert("모델을 불러오는 데 실패했습니다. F12 콘솔창의 에러를 확인해주세요.");
+            }
+        }
+
+        async function loop() {
+            webcam.update(); // 웹캠 프레임 업데이트
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + (prediction[i].probability.toFixed(2) * 100) + "%";
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+    </script>
+</body>
+</html>
